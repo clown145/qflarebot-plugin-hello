@@ -3,5 +3,5 @@ coverage/
 *.log
 .DS_Store
 
-# dist/ 故意不忽略：框架按 url: 直接拉 dist/plugin.js 与 dist/manifest.json，
-# 产物必须在仓库里。改了 src/ 记得重新 npm run build 再提交。
+# dist/ 故意不忽略：dist/manifest.json 是本仓库的声明清单，机器人安装前读它、构建时拿它
+# 与源码比对，必须在仓库里。改了 src/ 记得重新 npm run build 再提交。

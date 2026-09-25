@@ -7,8 +7,9 @@
 > `devDependencies` 指向本地路径 `file:../qqbot-workers/packages/*`，所以 `npm install` 只在
 > 把 `qqbot-workers` 检出到同级目录时才成立，仓库自带的发布工作流在 GitHub Actions 里也跑不起来。
 >
-> 这**不影响机器人使用它**：框架只拉 `dist/plugin.js` 与 `dist/manifest.json` 两个文件，
-> 两者都已提交进仓库。等 SDK 发布到 npm 后把依赖换成版本号即可恢复正常。
+> 这**不影响机器人使用它**：机器人的构建机按 commit 下载源码，用机器人仓库自己的 `@qqbot/sdk`
+> 与 `@qqbot/plugin-cli` 编译，不装 `devDependencies`（本插件也没有第三方依赖，连安装这一步都省了）。
+> 等 SDK 发布到 npm 后把依赖换成版本号，本地开发即可恢复正常。
 
 ## 开发
 
@@ -17,9 +18,9 @@
 npm install
 ```
 
-- `src/index.ts`：插件入口，必须默认导出 `definePlugin(...)`。示例包含一个命令 `/hello`、一个正则 `ping`、一个 `qq.group.robot_added` 事件，以及面板据以渲染配置表单的 `configSchema`。
+- `src/index.ts`：插件入口，必须默认导出 `definePlugin(...)`。示例包含命令 `/hello`、`/count`（生成器连续回复）、`/menu`（带按键）、`/remember`（写 KV），一个正则 `ping`、一个 `qq.group.robot_added` 事件、一个回调按键 `confirm`，以及面板据以渲染配置表单的 `configSchema`。
 - 插件不 import 运行时，所有能力（配置、KV、D1、日志、OpenAPI）都从处理器参数的 `ctx` 上取。
-- 只能 import `@qqbot/sdk` 与普通 npm 包；`cloudflare:workers` 等 Workers 内建模块可以用，构建时会保留为外部依赖。
+- **可以用第三方包**：写进 `dependencies`，并把更新后的 `package-lock.json` 一起提交。机器人的构建机按 lockfile 安装（只装 `dependencies`、不跑安装脚本）并打进产物；有依赖没 lockfile 会构建失败。包必须能在 Workers 里跑（不依赖 Node 内置模块、不用 `eval`）。`@qqbot/sdk` 放 `devDependencies`，其他 `@qqbot/*` 不许 import；`cloudflare:workers` 等 Workers 内建模块可以用，构建时保留为外部依赖。
 - 记得补一个 `LICENSE`，模板不替你选。
 
 ### 命名约定
@@ -48,7 +49,7 @@ npm run typecheck # tsc --noEmit
 
 `@qqbot/sdk/testing` 提供 `runCommand`、`createMockSession`、`createMockContext` 等工具，不需要运行时就能直接驱动处理器并断言回复，见 `src/index.test.ts`。
 
-## 构建
+## 构建与声明清单
 
 ```bash
 npm run build     # 等价于 qqbot-plugin build
@@ -56,39 +57,36 @@ npm run build     # 等价于 qqbot-plugin build
 
 产物在 `dist/`：
 
-- `dist/plugin.js`：单文件 ESM，已把 `@qqbot/sdk` 与所有依赖打进去，只保留 `cloudflare:*` 为外部 import；
+- `dist/plugin.js`：单文件 ESM，已把 `@qqbot/sdk` 与第三方依赖打进去，只保留 `cloudflare:*` 为外部 import；
 - `dist/plugin.js.map`：source map；
 - `dist/manifest.json`：从插件定义抽出的纯数据清单（名称、版本、命令、事件、配置 Schema 等），版本取自 `package.json`。
 
+本仓库的 `dist/manifest.json` 兼作**声明清单**：机器人安装前读它展示权限、校验撞名与依赖，全程不执行插件代码；构建时再拿它与从源码抽出的清单比对，不一致就构建失败。所以改了插件定义后要重新 `npm run build`，把 `dist/manifest.json` 随代码一起提交。
+
+> 现在的插件模板把声明清单放在仓库根目录的 `manifest.json`（`npm run sync` 生成）。机器人先找根目录，找不到再用 `dist/manifest.json`；本仓库早于这个约定，沿用旧位置，两种布局都能装。
+
+`dist/plugin.js` 与 source map 机器人已经用不上了（构建机从源码重新编译），留在仓库里是旧制品模型的遗留。
+
 只想校验定义而不打包时运行 `npx qqbot-plugin validate`。
 
-## 发布
+## 发布（源码分发）
 
-插件以**预构建产物**分发——机器人部署时只拉 `plugin.js` 与 `manifest.json`，不会编译你的源码。所以每个版本都要跑一次构建并把产物发出去。
+插件以**源码**分发：机器人在构建时按 commit 拉取源码、编译并校验声明清单，不需要发布 npm，也不需要构建制品。
 
-1. 首次运行 `npm install` 生成并提交 `package-lock.json`（CI 使用 `npm ci`）。
-2. **在仓库 Settings → General 里开启 Immutable Releases**。开启后已发布 release 的资产与 tag 都会被锁死，tag 名即使删库重建也不能复用，并自动生成可校验的 attestation。不开也能用，但那样同一个 tag 的产物随时可被替换。
-3. 修改 `package.json` 的 `version`，打同名 tag 并推送：
+1. 改 `package.json` 的 `version`；
+2. `npm run build`，把 `dist/manifest.json` 随代码一起提交；
+3. 推到 `main`：面板安装与检查更新拿的都是它的最新提交。
 
-   ```bash
-   npm version 0.1.1
-   git push --follow-tags
-   ```
-
-`.github/workflows/release.yml` 会校验 tag 与 `version` 一致、构建、测试，然后**先建草稿 release 把产物附齐、再发布**——Immutable Releases 下已发布的 release 不能再传资产（HTTP 422），所以顺序不能颠倒。
-
-不想用 npm 也完全没问题：机器人从 GitHub Release 拉产物，不经过 npm registry。
+`.github/workflows/release.yml` 是旧制品模型留下的：打 `v*` tag 时构建并把 `dist/` 产物发到 GitHub Release。机器人已经不从 Release 拉产物，发布不再需要打 tag（而且在 SDK 发布到 npm 之前，这个工作流的 `npm ci` 也过不去，见文首）。
 
 ## 安装到机器人
 
-在机器人的部署清单里加一条，`source` 三选一：
+面板 → 插件 → 安装插件，粘贴 `https://github.com/clown145/qqbot-plugin-hello`：面板解析出 `main` 的最新 commit，先预检（权限、命令重名等一次列出），确认后写进清单并触发一次构建，上线后插件出现在列表里。等价的管理 API（加 `"dryRun": true` 只预检不写）：
 
-| 写法 | 拉取地址 | 说明 |
-| --- | --- | --- |
-| `github:<owner>/<repo>` | Release 资产 `v<版本>/plugin.js` | 配合上面的工作流，推荐 |
-| `url:https://.../plugin.js` | 原样 | 把 `dist/` 提交进仓库，用 tag 或 commit 的 raw 链接，`git push` 即发布 |
-| `npm:<包名>` | jsDelivr 的 `dist/plugin.js` | 需要发布到 npm |
+```bash
+curl -X POST https://<机器人域名>/admin/manifest/plugins \
+  -H "Authorization: Bearer <管理密钥>" -H "content-type: application/json" \
+  -d '{"source": "git:clown145/qqbot-plugin-hello@<完整commit>"}'
+```
 
-版本固定写死，不支持 `^1.2.0` 这类范围——范围会让同一份清单在不同时间构建出不同代码。首次安装时会记录产物的 `integrity`（SRI 哈希），之后每次构建都重新校验，产物被换掉会**构建失败**而不是静默部署。
-
-因此：发布后不要手工改动产物；要改就发新版本。
+安装记录钉在具体 commit 上，推了新代码不会自动生效：在面板插件页点「检查全部更新」，勾选后点「更新选中」，几个插件一起更新也只构建一次。构建失败时线上保持上一次成功的版本，失败原因显示在插件页「未上线的改动」里，可以在那里卸载或撤销。
