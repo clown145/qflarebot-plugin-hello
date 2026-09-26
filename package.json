@@ -1,5 +1,5 @@
 {
-  "name": "qqbot-plugin-hello",
+  "name": "qflarebot-plugin-hello",
   "version": "0.1.0",
   "description": "QQ 机器人插件示例：命令、正则与事件",
   "type": "module",
@@ -7,7 +7,7 @@
     "dist"
   ],
   "keywords": [
-    "qqbot-plugin"
+    "qflarebot-plugin"
   ],
   "scripts": {
     "build": "qqbot-plugin build",

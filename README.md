@@ -1,6 +1,6 @@
-# qqbot-plugin-hello
+# qflarebot-plugin-hello
 
-运行在 Cloudflare Workers 上的 QQ 机器人插件示例，也是 [qqbot-workers](https://github.com/clown145/qqbot-workers) 框架"外部插件能被加载"这条链路的验证用例。
+运行在 Cloudflare Workers 上的 QQ 机器人插件示例，也是 [QFlareBot](https://github.com/QFlareBot/QFlareBot) 框架"外部插件能被加载"这条链路的验证用例。
 
 > [!IMPORTANT]
 > **现在克隆下来装不上依赖。** `@qqbot/sdk` 与 `@qqbot/plugin-cli` 还没发布到 npm，本仓库的
@@ -25,16 +25,16 @@ npm install
 
 ### 命名约定
 
-仓库名 = 包名 = `qqbot-plugin-<name>`（或 `@scope/qqbot-plugin-<name>`），`definePlugin({ name })` 用**去掉前缀的短名**：
+仓库名 = 包名 = `qflarebot-plugin-<name>`（或 `@scope/qflarebot-plugin-<name>`），`definePlugin({ name })` 用**去掉前缀的短名**：
 
 | package.json 的 `name` | `definePlugin({ name })` |
 | --- | --- |
-| `qqbot-plugin-hello` | `hello` |
-| `@me/qqbot-plugin-hello` | `hello` |
+| `qflarebot-plugin-hello` | `hello` |
+| `@me/qflarebot-plugin-hello` | `hello` |
 
 `name` 只能用小写字母、数字、`-`、`_`，因为它同时是路由前缀 `/p/<name>/`、KV 前缀 `p:<name>:`、D1 表前缀 `p_<name>_`，也是安装时的撞名检测键。`qqbot-plugin build` 会校验这层关系，不一致直接报错。
 
-不带 `qqbot-plugin-` 前缀也行，但那样包名必须与 `name` 完全相同。
+改名前的 `qqbot-plugin-<name>` 前缀照样认。不带前缀也能构建，但那样包名必须与 `name` 完全相同。
 
 ### 关于 `permissions`
 
@@ -81,12 +81,12 @@ npm run build     # 等价于 qqbot-plugin build
 
 ## 安装到机器人
 
-面板 → 插件 → 安装插件，粘贴 `https://github.com/clown145/qqbot-plugin-hello`：面板解析出 `main` 的最新 commit，先预检（权限、命令重名等一次列出），确认后写进清单并触发一次构建，上线后插件出现在列表里。等价的管理 API（加 `"dryRun": true` 只预检不写）：
+面板 → 插件 → 安装插件，粘贴 `https://github.com/clown145/qflarebot-plugin-hello`：面板解析出 `main` 的最新 commit，先预检（权限、命令重名等一次列出），确认后写进清单并触发一次构建，上线后插件出现在列表里。等价的管理 API（加 `"dryRun": true` 只预检不写）：
 
 ```bash
 curl -X POST https://<机器人域名>/admin/manifest/plugins \
   -H "Authorization: Bearer <管理密钥>" -H "content-type: application/json" \
-  -d '{"source": "git:clown145/qqbot-plugin-hello@<完整commit>"}'
+  -d '{"source": "git:clown145/qflarebot-plugin-hello@<完整commit>"}'
 ```
 
 安装记录钉在具体 commit 上，推了新代码不会自动生效：在面板插件页点「检查全部更新」，勾选后点「更新选中」，几个插件一起更新也只构建一次。构建失败时线上保持上一次成功的版本，失败原因显示在插件页「未上线的改动」里，可以在那里卸载或撤销。
