@@ -1,7 +1,5 @@
 node_modules/
+dist/
 coverage/
 *.log
 .DS_Store
-
-# dist/ 故意不忽略：dist/manifest.json 是本仓库的声明清单，机器人安装前读它、构建时拿它
-# 与源码比对，必须在仓库里。改了 src/ 记得重新 npm run build 再提交。

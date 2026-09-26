@@ -2,21 +2,18 @@
 
 运行在 Cloudflare Workers 上的 QQ 机器人插件示例，也是 [QFlareBot](https://github.com/QFlareBot/QFlareBot) 框架"外部插件能被加载"这条链路的验证用例。
 
-> [!IMPORTANT]
-> **现在克隆下来装不上依赖。** `@qqbot/sdk` 与 `@qqbot/plugin-cli` 还没发布到 npm，本仓库的
-> `devDependencies` 指向本地路径 `file:../qqbot-workers/packages/*`，所以 `npm install` 只在
-> 把 `qqbot-workers` 检出到同级目录时才成立，仓库自带的发布工作流在 GitHub Actions 里也跑不起来。
->
-> 这**不影响机器人使用它**：机器人的构建机按 commit 下载源码，用机器人仓库自己的 `@qqbot/sdk`
-> 与 `@qqbot/plugin-cli` 编译，不装 `devDependencies`（本插件也没有第三方依赖，连安装这一步都省了）。
-> 等 SDK 发布到 npm 后把依赖换成版本号，本地开发即可恢复正常。
-
 ## 开发
 
+`@qqbot/sdk` 与 `@qqbot/plugin-cli` 不发 npm，从 QFlareBot 源码构建。把 QFlareBot 克隆到本仓库旁边（`devDependencies` 里是 `file:../QFlareBot/packages/*`）：
+
 ```bash
-# 需要 qqbot-workers 检出在同级目录
+git clone https://github.com/QFlareBot/QFlareBot
+(cd QFlareBot && pnpm install --filter '@qqbot/plugin-cli...' && pnpm --filter '@qqbot/plugin-cli...' build)
+cd qflarebot-plugin-hello    # 与 QFlareBot 同级
 npm install
 ```
+
+CI 按同样的布局拉取并构建 QFlareBot。机器人的构建机不装 `devDependencies`，编译时一律用机器人仓库自己那一份 SDK。
 
 - `src/index.ts`：插件入口，必须默认导出 `definePlugin(...)`。示例包含命令 `/hello`、`/count`（生成器连续回复）、`/menu`（带按键）、`/remember`（写 KV），一个正则 `ping`、一个 `qq.group.robot_added` 事件、一个回调按键 `confirm`，以及面板据以渲染配置表单的 `configSchema`。
 - 插件不 import 运行时，所有能力（配置、KV、D1、日志、OpenAPI）都从处理器参数的 `ctx` 上取。
@@ -61,11 +58,7 @@ npm run build     # 等价于 qqbot-plugin build
 - `dist/plugin.js.map`：source map；
 - `dist/manifest.json`：从插件定义抽出的纯数据清单（名称、版本、命令、事件、配置 Schema 等），版本取自 `package.json`。
 
-本仓库的 `dist/manifest.json` 兼作**声明清单**：机器人安装前读它展示权限、校验撞名与依赖，全程不执行插件代码；构建时再拿它与从源码抽出的清单比对，不一致就构建失败。所以改了插件定义后要重新 `npm run build`，把 `dist/manifest.json` 随代码一起提交。
-
-> 现在的插件模板把声明清单放在仓库根目录的 `manifest.json`（`npm run sync` 生成）。机器人先找根目录，找不到再用 `dist/manifest.json`；本仓库早于这个约定，沿用旧位置，两种布局都能装。
-
-`dist/plugin.js` 与 source map 机器人已经用不上了（构建机从源码重新编译），留在仓库里是旧制品模型的遗留。
+`dist/` 不提交。仓库根目录的 `manifest.json` 是**声明清单**：机器人安装前读它展示权限、校验撞名与依赖，全程不执行插件代码；构建时再拿它与从源码抽出的清单比对，不一致就构建失败。改了插件定义后运行 `npm run sync`（构建 + 把 dist/manifest.json 复制到根目录）并提交，CI 会校验两者一致，过期即失败。
 
 只想校验定义而不打包时运行 `npx qqbot-plugin validate`。
 
@@ -74,10 +67,10 @@ npm run build     # 等价于 qqbot-plugin build
 插件以**源码**分发：机器人在构建时按 commit 拉取源码、编译并校验声明清单，不需要发布 npm，也不需要构建制品。
 
 1. 改 `package.json` 的 `version`；
-2. `npm run build`，把 `dist/manifest.json` 随代码一起提交；
+2. `npm run sync` 同步声明清单，随代码一起提交；
 3. 推到 `main`：面板安装与检查更新拿的都是它的最新提交。
 
-`.github/workflows/release.yml` 是旧制品模型留下的：打 `v*` tag 时构建并把 `dist/` 产物发到 GitHub Release。机器人已经不从 Release 拉产物，发布不再需要打 tag（而且在 SDK 发布到 npm 之前，这个工作流的 `npm ci` 也过不去，见文首）。
+CI（`.github/workflows/ci.yml`）在每次 push 时构建、校验声明清单一致性并跑测试；打 `v*` tag 时额外校验 tag 与 version 一致。
 
 ## 安装到机器人
 

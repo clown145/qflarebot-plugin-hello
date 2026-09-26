@@ -4,21 +4,19 @@
   "description": "QQ 机器人插件示例：命令、正则与事件",
   "license": "MIT",
   "type": "module",
-  "files": [
-    "dist"
-  ],
   "keywords": [
     "qflarebot-plugin"
   ],
   "scripts": {
     "build": "qqbot-plugin build",
+    "sync": "qqbot-plugin build && node -e \"require('node:fs').copyFileSync('dist/manifest.json','manifest.json')\"",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250917.0",
-    "@qqbot/plugin-cli": "file:../qqbot-workers/packages/plugin-cli",
-    "@qqbot/sdk": "file:../qqbot-workers/packages/sdk",
+    "@qqbot/plugin-cli": "file:../QFlareBot/packages/plugin-cli",
+    "@qqbot/sdk": "file:../QFlareBot/packages/sdk",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   }
