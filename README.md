@@ -21,7 +21,7 @@ npm install
 - `src/index.ts`：插件入口，必须默认导出 `definePlugin(...)`。示例包含命令 `/hello`、`/count`（生成器连续回复）、`/menu`（带按键）、`/remember`（写 KV），一个正则 `ping`、一个 `qq.group.robot_added` 事件、一个回调按键 `confirm`，以及面板据以渲染配置表单的 `configSchema`。
 - 插件不 import 运行时，所有能力（配置、KV、D1、日志、OpenAPI）都从处理器参数的 `ctx` 上取。
 - **可以用第三方包**：写进 `dependencies`，并把更新后的 `package-lock.json` 一起提交。机器人的构建机按 lockfile 安装（只装 `dependencies`、不跑安装脚本）并打进产物；有依赖没 lockfile 会构建失败。包必须能在 Workers 里跑（不依赖 Node 内置模块、不用 `eval`）。`@qqbot/sdk` 放 `devDependencies`，其他 `@qqbot/*` 不许 import；`cloudflare:workers` 等 Workers 内建模块可以用，构建时保留为外部依赖。
-- 记得补一个 `LICENSE`，模板不替你选。
+- 本仓库以 MIT 发布；复制它开新插件时，把 `LICENSE` 的署名和 `package.json` 的 `license` 换成你自己的。
 
 ### 命名约定
 
