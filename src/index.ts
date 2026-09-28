@@ -9,6 +9,8 @@ export default definePlugin<Config>({
   // 包名去掉 qflarebot-plugin- 前缀的短名，同时是 KV 前缀、D1 表前缀与路由 /p/<name>/
   // 构建时会校验它与 package.json 的 name 对得上
   name: 'hello',
+  // 最低要求的契约版本。不写就是构建时 SDK 的版本；没用到新能力（契约 2 的 ctx.db.batch()）时写 1，老版本的机器人也能装
+  apiVersion: 1,
   displayName: 'Hello 插件',
   description: '演示命令、正则、事件与按键的最小插件',
   // 仅供安装前展示，运行时不强制（插件与核心同 isolate，无法沙箱）
